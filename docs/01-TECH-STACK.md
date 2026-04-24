@@ -12,6 +12,9 @@
 | **Document Generation** | Foxit APIs | Cognitive Health Report PDFs (Document Generation + PDF Services) |
 | **Admin Dashboard** | Retool (AppGen / Assist) | Internal patient management tool |
 | **Deployment** | Akamai LKE (Kubernetes) | Open-source requirement + $1,000 credit; CPU + GPU nodes |
+| **Domain** | claracare.me (Namecheap + Cloudflare DNS) | Custom domain for professional presence; Cloudflare for fast DNS propagation |
+| **Email (Outbound)** | Brevo SMTP Relay | Transactional alerts/digests from alerts@claracare.me; 300/day free tier; SPF + DKIM authenticated |
+| **Email (Inbound)** | Cloudflare Email Routing | support@claracare.me forwards to Gmail; zero server management |
 | **Phone Calling (Bonus)** | Twilio | $15.50 free credit, free phone number, official Deepgram integration |
 | **Mobile App** | Replit Mobile Apps | Family dashboard published as installable mobile app |
 
@@ -163,10 +166,11 @@ FOXIT_API_SECRET=xxx
 TWILIO_ACCOUNT_SID=xxx
 TWILIO_AUTH_TOKEN=xxx
 TWILIO_PHONE_NUMBER=+1xxxyyyzzzz
-SMTP_HOST=smtp.gmail.com  # for email alerts
+SMTP_HOST=smtp-relay.brevo.com  # Brevo SMTP relay
 SMTP_PORT=587
-SMTP_USER=xxx
-SMTP_PASSWORD=xxx
+SMTP_USER=xxx  # Brevo SMTP login
+SMTP_PASSWORD=xxx  # Brevo SMTP key
+FROM_EMAIL=alerts@claracare.me
 
 # Dashboard .env.local
 NEXT_PUBLIC_API_URL=http://localhost:8000

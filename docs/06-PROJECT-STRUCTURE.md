@@ -54,39 +54,55 @@ claracare/
 │   │   │   ├── pipeline.py            # Pipeline orchestrator (analyze → baseline → alert → digest)
 │   │   │   └── utils.py               # Shared utilities (cognitive score calculation)
 │   │   │
-│   │   ├── storage/                   # P2 — Data Abstraction Layer
-│   │   │   ├── __init__.py
-│   │   │   ├── base.py                # DataStore Protocol (interface)
-│   │   │   └── memory.py              # In-memory implementation with seeded data
-│   │   │
-│   │   ├── notifications/             # P2 — Email Notifications
-│   │   │   ├── __init__.py
-│   │   │   ├── email.py               # Async SMTP email service
-│   │   │   └── templates/
-│   │   │       ├── _base.html          # Shared base template
-│   │   │       ├── alert_email.html    # Alert notification template
-│   │   │       └── daily_digest.html   # Daily digest template
-│   │   │
-│   │   ├── routes/                    # P2 — REST API Endpoints
-│   │   │   ├── __init__.py
-│   │   │   ├── patients.py            # Patient profile CRUD
-│   │   │   ├── conversations.py       # Conversation history + pipeline trigger
-│   │   │   ├── wellness.py            # Wellness digests + cognitive trends
-│   │   │   └── alerts.py              # Alert management + acknowledgment
-│   │   │
-│   │   ├── nostalgia/                 # P3 — Nostalgia Mode (planned)
-│   │   │   └── ...
-│   │   │
-│   │   └── sanity_client/             # P3 — Sanity CMS (planned)
-│   │       └── ...
-│   │
-│   └── tests/                         # Test Suite
-│       ├── __init__.py
-│       ├── test_cognitive_analyzer.py  # 24 unit tests for analyzer
-│       ├── test_baseline_tracker.py    # 12 tests for baseline logic
-│       ├── test_alert_engine.py        # 10 tests for alert generation
-│       ├── test_pipeline.py            # 10 tests for pipeline orchestration
-│       └── test_api_routes.py          # 20+ integration tests for API
+│   │   ├── storage/                   # P2/P3 — Data Abstraction Layer
+    │   │   │   ├── __init__.py
+    │   │   │   ├── base.py                # DataStore Protocol (19 methods incl. get_patient_insights)
+    │   │   │   ├── memory.py              # In-memory implementation with seeded data
+    │   │   │   └── sanity.py              # P3 — Sanity CMS implementation (GROQ queries)
+    │   │   │
+    │   │   ├── notifications/             # P2 — Email Notifications
+    │   │   │   ├── __init__.py
+    │   │   │   ├── email.py               # Async SMTP email service
+    │   │   │   └── templates/
+    │   │   │       ├── _base.html          # Shared base template
+    │   │   │       ├── alert_email.html    # Alert notification template
+    │   │   │       └── daily_digest.html   # Daily digest template
+    │   │   │
+    │   │   ├── routes/                    # P2/P3 — REST API Endpoints
+    │   │   │   ├── __init__.py
+    │   │   │   ├── patients.py            # Patient profile CRUD
+    │   │   │   ├── conversations.py       # Conversation history + pipeline trigger
+    │   │   │   ├── wellness.py            # Wellness digests + cognitive trends
+    │   │   │   ├── alerts.py              # Alert management + acknowledgment
+    │   │   │   ├── insights.py            # P3 — Sanity challenge showcase endpoint
+    │   │   │   └── reports.py             # P3 — Cognitive report PDF download
+    │   │   │
+    │   │   ├── nostalgia/                 # P3 — Nostalgia Mode
+    │   │   │   ├── __init__.py
+    │   │   │   ├── era.py                 # Golden years calculation
+    │   │   │   └── youcom_client.py       # You.com API for era-specific content
+    │   │   │
+    │   │   └── reports/                   # P3 — PDF Report Generation
+    │   │       ├── __init__.py
+    │   │       ├── foxit_client.py         # Foxit Document Generation API client
+    │   │       └── generator.py            # Report data assembly + PDF generation
+    │   │
+    │   ├── scripts/
+    │   │   ├── seed_sanity.py             # Seed Sanity CMS with demo data
+    │   │   └── fix_datetime.py            # Utility script
+    │   │
+    │   └── tests/                         # Test Suite (109 tests)
+    │       ├── conftest.py                # Test config (forces InMemoryDataStore)
+    │       ├── test_cognitive_analyzer.py  # 24 unit tests for analyzer
+    │       ├── test_baseline_tracker.py    # 12 tests for baseline logic
+    │       ├── test_alert_engine.py        # 10 tests for alert generation
+    │       ├── test_pipeline.py            # 10 tests for pipeline orchestration
+    │       ├── test_api_routes.py          # 20+ integration tests for P2 API
+    │       ├── test_insights.py            # P3 — Insights endpoint tests
+    │       ├── test_sanity_store.py        # P3 — SanityDataStore mapping tests
+    │       ├── test_nostalgia.py           # P3 — Era calculation + You.com tests
+    │       ├── test_foxit.py              # P3 — Foxit + ReportGenerator tests
+    │       └── test_reports_route.py       # P3 — Report download API tests
 │
 ├── dashboard/                         # Next.js (P4)
 │   ├── README.md
@@ -136,18 +152,21 @@ claracare/
 │           ├── sanity.ts              # Sanity client (if direct queries)
 │           └── utils.ts               # Utility functions
 │
-├── sanity/                            # Sanity Studio (P3)
-│   ├── README.md
+├── studio-claracare/                  # Sanity Studio v5 (P3)
 │   ├── package.json
-│   ├── sanity.config.ts               # Sanity Studio config
+│   ├── sanity.config.ts               # Sanity Studio config (project: 5syqstxl)
 │   ├── sanity.cli.ts
 │   │
+│   ├── schemaTypes/                   # Schema definitions
+│   │   ├── index.ts                   # Schema exports
+│   │   ├── patient.ts                 # Patient document (refs → familyMember)
+│   │   ├── conversation.ts            # Conversation (refs → patient, cognitiveMetrics, nostalgia)
+│   │   ├── familyMember.ts            # Family member (refs → patient[])
+│   │   ├── wellnessDigest.ts          # Wellness digest (refs → patient, conversation)
+│   │   └── alert.ts                   # Alert (refs → patient, conversation, familyMember)
+│   │
 │   └── schemas/
-│       ├── index.ts                   # Schema exports
-│       ├── patient.ts                 # Patient schema
-│       ├── conversation.ts            # Conversation schema
-│       ├── familyMember.ts            # Family member schema
-│       └── wellnessDigest.ts          # Wellness digest schema
+│       └── index.ts                   # Re-exports from schemaTypes/
 │
 ├── voice-web/                         # Simple web voice interface (P1)
 │   ├── index.html                     # Main HTML
@@ -181,14 +200,15 @@ claracare/
 | `/backend/app/voice` | P1 | P2 |
 | `/backend/app/cognitive` | P2 | - |
 | `/backend/app/nostalgia` | P3 | P1 |
-| `/backend/app/sanity_client` | P3 | - |
+| `/backend/app/storage` | P2, P3 | - |
+| `/backend/app/reports` | P3 | - |
 | `/backend/app/notifications` | P2 | - |
 | `/backend/app/routes` | P2, P3 | - |
 | `/dashboard` | P4 | - |
-| `/sanity` | P3 | P4 |
+| `/studio-claracare` | P3 | P4 |
 | `/voice-web` | P1 | - |
 | `/k8s` | P5 | - |
-| `/scripts` | P5, P3 | - |
+| `/backend/scripts` | P3, P5 | - |
 
 ---
 
@@ -580,24 +600,25 @@ docs(readme): Add deployment instructions
 
 ```
 backend/tests/
-├── __init__.py
-├── test_cognitive_analyzer.py     # 24 unit tests
-├── test_baseline_tracker.py       # 12 tests
-├── test_alert_engine.py           # 10 tests
-├── test_pipeline.py               # 10 integration tests
-├── test_api_routes.py             # 20+ integration tests
-└── verify_p2_setup.py             # Manual verification script
+├── conftest.py                    # Forces InMemoryDataStore in tests
+├── test_cognitive_analyzer.py     # 24 unit tests (P2)
+├── test_baseline_tracker.py       # 12 tests (P2)
+├── test_alert_engine.py           # 10 tests (P2)
+├── test_pipeline.py               # 10 integration tests (P2)
+├── test_api_routes.py             # 20+ integration tests (P2)
+├── test_insights.py               # 5 tests — Sanity insights endpoint (P3)
+├── test_sanity_store.py           # 9 tests — SanityDataStore mappings (P3)
+├── test_nostalgia.py              # 11 tests — Era calc + You.com (P3)
+├── test_foxit.py                  # 7 tests — PDF generation (P3)
+├── test_reports_route.py          # 4 tests — Report API route (P3)
+├── verify_p2_setup.py             # Manual verification script
+└── verify_voice.py                # Manual voice verification
 
-dashboard/tests/
-└── (Jest tests for components)
+Total: 109 tests
 
-# Run backend tests
+# Run all tests
 cd backend
-pytest -v
-
-# Run frontend tests
-cd dashboard
-npm test
+python3 -m pytest tests/ -v
 ```
 
 ---
