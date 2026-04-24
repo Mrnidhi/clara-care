@@ -19,6 +19,21 @@ load_dotenv(dotenv_path=env_path)
 
 from .voice import twilio_bridge, session_manager, outbound_manager
 
+# Import P2 components
+from .storage import InMemoryDataStore
+from .cognitive.analyzer import CognitiveAnalyzer
+from .cognitive.baseline import BaselineTracker
+from .cognitive.alerts import AlertEngine
+from .cognitive.pipeline import CognitivePipeline
+from .notifications.email import EmailNotifier
+from .routes import (
+    patients_router,
+    conversations_router,
+    wellness_router,
+    alerts_router
+)
+from .routes import patients, conversations, wellness, alerts
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -35,6 +50,50 @@ async def lifespan(app: FastAPI):
     """
     # Startup
     logger.info("Starting ClaraCare backend...")
+    
+    # Initialize P2 components
+    logger.info("Initializing cognitive analysis system...")
+    
+    # Data store (in-memory for now, P3 will add Sanity)
+    data_store = InMemoryDataStore()
+    
+    # Cognitive components
+    analyzer = CognitiveAnalyzer()
+    baseline_tracker = BaselineTracker(data_store)
+    
+    # Notification service
+    notification_service = EmailNotifier()
+    
+    # Alert engine
+    alert_engine = AlertEngine(data_store, notification_service)
+    
+    # Cognitive pipeline orchestrator
+    cognitive_pipeline = CognitivePipeline(
+        analyzer=analyzer,
+        baseline_tracker=baseline_tracker,
+        alert_engine=alert_engine,
+        data_store=data_store,
+        notification_service=notification_service
+    )
+    
+    # Store in app state for access in routes
+    app.state.data_store = data_store
+    app.state.cognitive_pipeline = cognitive_pipeline
+    
+    # Set data store in route modules
+    patients.set_data_store(data_store)
+    conversations.set_data_store(data_store)
+    wellness.set_data_store(data_store)
+    alerts.set_data_store(data_store)
+    
+    # Set cognitive pipeline in route modules
+    conversations.set_cognitive_pipeline(cognitive_pipeline)
+    
+    # Set cognitive pipeline in Twilio bridge (P2 integration)
+    twilio_bridge.set_cognitive_pipeline(cognitive_pipeline)
+    
+    logger.info("Cognitive analysis system initialized ✓")
+    
     yield
     
     # Shutdown
@@ -58,6 +117,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Register P2 API routers
+app.include_router(patients_router)
+app.include_router(conversations_router)
+app.include_router(wellness_router)
+app.include_router(alerts_router)
 
 
 @app.get("/")
