@@ -17,10 +17,11 @@ class FunctionHandler:
     Handles execution of Clara's function calls
     """
     
-    def __init__(self, patient_id: str):
+    def __init__(self, patient_id: str, cognitive_pipeline=None):
         self.patient_id = patient_id
         self.sanity_api_url = os.getenv("SANITY_API_URL", "http://localhost:8000/api/sanity")
         self.you_api_key = os.getenv("YOUCOM_API_KEY", "")
+        self.cognitive_pipeline = cognitive_pipeline  # P2 cognitive pipeline
         
     async def execute(self, function_name: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -69,6 +70,35 @@ class FunctionHandler:
         """
         patient_id = params.get("patient_id", self.patient_id)
         
+        # First try to get from cognitive pipeline's data store (P2)
+        if self.cognitive_pipeline and self.cognitive_pipeline.data_store:
+            try:
+                patient = await self.cognitive_pipeline.data_store.get_patient(patient_id)
+                if patient:
+                    recent_convos = await self.cognitive_pipeline.data_store.get_conversations(
+                        patient_id=patient_id, 
+                        limit=5
+                    )
+                    return {
+                        "success": True,
+                        "patient": {
+                            "name": patient.get("name"),
+                            "age": patient.get("age"),
+                            "location": patient.get("location"),
+                        },
+                        "recent_conversations": [
+                            {
+                                "date": c.get("timestamp"),
+                                "summary": c.get("summary", "")
+                            } for c in recent_convos
+                        ],
+                        "medications": patient.get("medications", []),
+                        "preferences": patient.get("preferences", {})
+                    }
+            except Exception as e:
+                logger.warning(f"Could not get patient from data store: {e}")
+        
+        # Fallback to Sanity API (P3)
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.get(
@@ -344,13 +374,51 @@ class FunctionHandler:
     async def save_conversation(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """
         Save the conversation transcript, summary, and cognitive metrics
+        P2 INTEGRATION: Run through cognitive pipeline
         """
         patient_id = params.get("patient_id", self.patient_id)
         transcript = params.get("transcript", "")
         duration = params.get("duration", 0)
         summary = params.get("summary", "")
         detected_mood = params.get("detected_mood", "neutral")
+        response_times = params.get("response_times")  # P2: optional timing data
         
+        # P2: If cognitive pipeline is available, run full analysis
+        if self.cognitive_pipeline:
+            try:
+                logger.info("Running cognitive analysis pipeline...")
+                
+                result = await self.cognitive_pipeline.process_conversation(
+                    patient_id=patient_id,
+                    transcript=transcript,
+                    duration=duration,
+                    summary=summary,
+                    detected_mood=detected_mood,
+                    response_times=response_times
+                )
+                
+                if result.get("success"):
+                    logger.info(f"Cognitive pipeline complete. Conversation: {result['conversation_id']}")
+                    logger.info(f"  Baseline: {'✓' if result['baseline_established'] else '⏳'}")
+                    logger.info(f"  Alerts: {len(result.get('alerts', []))}")
+                    logger.info(f"  Cognitive Score: {result['digest']['cognitive_score']}/100")
+                    
+                    return {
+                        "success": True,
+                        "message": "Conversation analyzed and saved",
+                        "conversation_id": result["conversation_id"],
+                        "cognitive_score": result["digest"]["cognitive_score"],
+                        "alerts_generated": len(result.get("alerts", []))
+                    }
+                else:
+                    logger.error(f"Cognitive pipeline failed: {result.get('error')}")
+                    # Fall through to legacy save
+                    
+            except Exception as e:
+                logger.error(f"Error in cognitive pipeline: {e}", exc_info=True)
+                # Fall through to legacy save
+        
+        # Legacy save (if no pipeline or pipeline failed)
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.post(

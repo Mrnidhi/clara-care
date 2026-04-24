@@ -24,12 +24,13 @@ class DeepgramVoiceAgent:
     Handles audio streaming and function calls
     """
     
-    def __init__(self, patient_id: str):
+    def __init__(self, patient_id: str, cognitive_pipeline=None):
         self.patient_id = patient_id
         self.deepgram_api_key = os.getenv("DEEPGRAM_API_KEY")
         self.deepgram_ws: Optional[WebSocketClientProtocol] = None
         self.is_connected = False
-        self.function_handler = FunctionHandler(patient_id)
+        self.function_handler = FunctionHandler(patient_id, cognitive_pipeline)
+        self._listen_task: Optional[asyncio.Task] = None
         
         # Callbacks for audio output
         self.on_audio_output: Optional[Callable[[bytes], None]] = None
@@ -63,7 +64,7 @@ class DeepgramVoiceAgent:
             logger.info("Successfully connected to Deepgram Voice Agent")
             
             # Start listening for messages from Deepgram
-            asyncio.create_task(self._listen_to_deepgram())
+            self._listen_task = asyncio.create_task(self._listen_to_deepgram())
             
             return True
             
@@ -234,7 +235,16 @@ class DeepgramVoiceAgent:
                 await self.on_error(f"Audio send error: {str(e)}")
     
     async def close(self):
-        """Close the Deepgram WebSocket connection"""
+        """Close the Deepgram WebSocket connection and cancel background tasks"""
+        # Cancel the listener task first
+        if self._listen_task and not self._listen_task.done():
+            self._listen_task.cancel()
+            try:
+                await self._listen_task
+            except asyncio.CancelledError:
+                pass
+            self._listen_task = None
+        
         if self.deepgram_ws:
             try:
                 await self.deepgram_ws.close()
@@ -275,13 +285,14 @@ class AgentSessionManager:
     def __init__(self):
         self.sessions: Dict[str, DeepgramVoiceAgent] = {}
     
-    async def create_session(self, session_id: str, patient_id: str) -> DeepgramVoiceAgent:
+    async def create_session(self, session_id: str, patient_id: str, cognitive_pipeline=None) -> DeepgramVoiceAgent:
         """
         Create a new agent session
         
         Args:
             session_id: Unique identifier for this call (e.g., Twilio CallSid)
             patient_id: Patient identifier
+            cognitive_pipeline: Optional cognitive pipeline for P2 integration
             
         Returns:
             DeepgramVoiceAgent instance
@@ -290,7 +301,7 @@ class AgentSessionManager:
             logger.warning(f"Session {session_id} already exists, closing old session")
             await self.close_session(session_id)
         
-        agent = DeepgramVoiceAgent(patient_id)
+        agent = DeepgramVoiceAgent(patient_id, cognitive_pipeline)
         connected = await agent.connect()
         
         if connected:

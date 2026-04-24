@@ -187,6 +187,11 @@ FUNCTION_DEFINITIONS = [
                     "type": "string",
                     "enum": ["happy", "neutral", "sad", "confused", "distressed", "nostalgic"],
                     "description": "Overall mood during the conversation"
+                },
+                "response_times": {
+                    "type": "array",
+                    "items": {"type": "number"},
+                    "description": "Optional: Array of response latencies in seconds (time between Clara's question and patient's answer)"
                 }
             },
             "required": ["patient_id", "transcript", "duration", "summary", "detected_mood"]

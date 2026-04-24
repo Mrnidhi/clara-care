@@ -89,11 +89,13 @@ class TwilioCallSession:
         self,
         twilio_ws: WebSocket,
         patient_id: str,
-        call_sid: str
+        call_sid: str,
+        cognitive_pipeline=None
     ):
         self.twilio_ws = twilio_ws
         self.patient_id = patient_id
         self.call_sid = call_sid
+        self.cognitive_pipeline = cognitive_pipeline
         
         self.twilio_stream = TwilioAudioStream(twilio_ws)
         self.deepgram_agent: Optional[DeepgramVoiceAgent] = None
@@ -107,10 +109,11 @@ class TwilioCallSession:
         Connect to Deepgram and set up audio bridging
         """
         try:
-            # Create Deepgram agent session
+            # Create Deepgram agent session (P2: pass cognitive pipeline)
             self.deepgram_agent = await session_manager.create_session(
                 session_id=self.call_sid,
-                patient_id=self.patient_id
+                patient_id=self.patient_id,
+                cognitive_pipeline=self.cognitive_pipeline
             )
             
             # Set up callbacks for Deepgram output
@@ -260,6 +263,11 @@ class TwilioBridge:
     
     def __init__(self):
         self.active_calls: Dict[str, TwilioCallSession] = {}
+        self.cognitive_pipeline = None  # P2: will be set by main.py
+    
+    def set_cognitive_pipeline(self, pipeline):
+        """Set the cognitive pipeline (called during app startup)"""
+        self.cognitive_pipeline = pipeline
     
     async def handle_call(
         self,
@@ -297,11 +305,12 @@ class TwilioBridge:
                     await websocket.close()
                     return
                 
-                # Create call session
+                # Create call session (P2: pass cognitive pipeline)
                 call_session = TwilioCallSession(
                     twilio_ws=websocket,
                     patient_id=patient_id,
-                    call_sid=call_sid
+                    call_sid=call_sid,
+                    cognitive_pipeline=self.cognitive_pipeline
                 )
                 
                 self.active_calls[call_sid] = call_session
