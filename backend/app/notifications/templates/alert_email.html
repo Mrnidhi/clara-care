@@ -1,0 +1,150 @@
+{% extends "_base.html" %}
+
+{% block title %}ClaraCare Alert{% endblock %}
+
+{% block styles %}
+.header {
+    background-color: {{ severity_color }};
+    color: white;
+    padding: 20px;
+    text-align: center;
+}
+.header h1 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 600;
+}
+.severity-badge {
+    display: inline-block;
+    background-color: rgba(255,255,255,0.2);
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 8px;
+    text-transform: uppercase;
+}
+.alert-icon {
+    font-size: 32px;
+    margin-bottom: 8px;
+}
+.alert-type {
+    font-size: 18px;
+    font-weight: 600;
+    color: #222;
+    margin-bottom: 16px;
+}
+.alert-description {
+    font-size: 16px;
+    color: #555;
+    margin-bottom: 24px;
+    line-height: 1.8;
+}
+.metrics-box {
+    background-color: #f8f9fa;
+    border-left: 4px solid {{ severity_color }};
+    padding: 16px;
+    margin: 20px 0;
+    border-radius: 4px;
+}
+.metrics-box h3 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.metrics-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.metrics-table td {
+    padding: 8px 0;
+    border-bottom: 1px solid #e0e0e0;
+}
+.metrics-table tr:last-child td {
+    border-bottom: none;
+}
+.metric-label {
+    font-weight: 500;
+    color: #555;
+    width: 60%;
+}
+.metric-value {
+    font-weight: 600;
+    color: #222;
+    text-align: right;
+    width: 40%;
+}
+.timestamp {
+    font-size: 13px;
+    color: #999;
+    margin-top: 20px;
+}
+.cta-button {
+    background-color: {{ severity_color }} !important;
+}
+{% endblock %}
+
+{% block content %}
+<div class="header">
+    <div class="alert-icon">⚠️</div>
+    <h1>ClaraCare Alert</h1>
+    <div class="severity-badge">{{ alert.severity }} Priority</div>
+</div>
+
+<div class="content">
+    {% if recipient_name %}
+    <div class="greeting">Hi {{ recipient_name }},</div>
+    {% endif %}
+    
+    <div class="alert-type">
+        {{ alert_type_friendly }}
+    </div>
+    
+    <div class="alert-description">
+        {{ alert.description }}
+    </div>
+    
+    {% if alert.related_metrics %}
+    <div class="metrics-box">
+        <h3>Related Metrics</h3>
+        <table class="metrics-table">
+            {% if alert.related_metrics.current_value %}
+            <tr>
+                <td class="metric-label">Current Value</td>
+                <td class="metric-value">{{ "%.3f"|format(alert.related_metrics.current_value) }}</td>
+            </tr>
+            {% endif %}
+            {% if alert.related_metrics.baseline_value %}
+            <tr>
+                <td class="metric-label">Baseline Value</td>
+                <td class="metric-value">{{ "%.3f"|format(alert.related_metrics.baseline_value) }}</td>
+            </tr>
+            {% endif %}
+            {% if alert.related_metrics.deviation_percent %}
+            <tr>
+                <td class="metric-label">Deviation</td>
+                <td class="metric-value">{{ "%.1f"|format(alert.related_metrics.deviation_percent) }}%</td>
+            </tr>
+            {% endif %}
+            {% if alert.related_metrics.consecutive_count %}
+            <tr>
+                <td class="metric-label">Consecutive Occurrences</td>
+                <td class="metric-value">{{ alert.related_metrics.consecutive_count }}</td>
+            </tr>
+            {% endif %}
+        </table>
+    </div>
+    {% endif %}
+    
+    <div class="timestamp">
+        Alert generated: {{ timestamp_formatted }}
+    </div>
+</div>
+{% endblock %}
+
+{% block footer_message %}
+<p>This alert was generated for {{ patient_name }}.</p>
+<p style="font-size: 12px; margin-top: 8px;">For support, contact your healthcare provider.</p>
+{% endblock %}
