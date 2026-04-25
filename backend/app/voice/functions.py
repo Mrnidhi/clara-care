@@ -162,22 +162,29 @@ class FunctionHandler:
         try:
             # Get patient to determine birth year and golden years
             patient = None
-            if self.cognitive_pipeline and self.cognitive_pipeline.data_store:
-                patient = await self.cognitive_pipeline.data_store.get_patient(patient_id)
+            # Fallback mock patient if cognitive pipeline is missing
+            birth_year = 1951 # Default
             
-            birth_year = None
-            if patient:
-                birth_year = patient.get("birth_year")
+            if hasattr(self, 'cognitive_pipeline') and self.cognitive_pipeline and hasattr(self.cognitive_pipeline, 'data_store'):
+                patient = await self.cognitive_pipeline.data_store.get_patient(patient_id)
+                if patient:
+                    birth_year = patient.get("birth_year", 1951)
             
             # P3: Use nostalgia engine to fetch era-specific content
-            nostalgia_data = await self.youcom_client.search_nostalgia(
-                birth_year=birth_year,
-                trigger_reason=trigger_reason
-            )
+            # Check if we have a client before calling
+            if hasattr(self, 'youcom_client') and self.youcom_client:
+                nostalgia_data = await self.youcom_client.search_nostalgia(
+                    birth_year=birth_year,
+                    trigger_reason=trigger_reason
+                )
+            else:
+                 return self._default_nostalgia_response(trigger_reason)
             
             golden_years = "1960s-1970s"
             if birth_year:
-                start_year, end_year = calculate_golden_years(birth_year)
+                # Simple calculation if helper not available
+                start_year = birth_year + 15
+                end_year = birth_year + 25
                 golden_years = f"{start_year}s-{end_year}s"
             
             return {
@@ -282,14 +289,7 @@ class FunctionHandler:
                         "message": f"Logged medication check for {medication_name}"
                     }
                 else:
-                    # API not available - use local fallback
-                    logger.warning(f"Failed to log medication: {response.status_code}")
-                    logger.info(f"Medication log (local): {medication_name} - Taken: {taken} - Notes: {notes}")
-                    return {
-                        "success": True,
-                        "message": f"Logged medication check for {medication_name}",
-                        "note": "Logged locally - Sanity not connected yet"
-                    }
+                    raise Exception(f"API status {response.status_code}")
                     
         except Exception as e:
             logger.error(f"Error logging medication: {e}")
@@ -331,14 +331,7 @@ class FunctionHandler:
                         "alert_id": response.json().get("alert_id", "")
                     }
                 else:
-                    # API not available - use local fallback
-                    logger.warning(f"Failed to send alert: {response.status_code}")
-                    logger.critical(f"ALERT [{severity}] - {alert_type}: {message} (Patient: {patient_id})")
-                    return {
-                        "success": True,
-                        "message": "Alert logged",
-                        "note": "Logged locally - Sanity not connected yet. In production, this would notify family."
-                    }
+                    raise Exception(f"API status {response.status_code}")
                     
         except Exception as e:
             logger.error(f"Error triggering alert: {e}")
