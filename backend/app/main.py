@@ -204,7 +204,7 @@ async def twiml_handler(patient_id: str = "demo-patient"):
     Query params:
         patient_id: Patient identifier
     """
-    server_url = os.getenv("SERVER_PUBLIC_URL", "http://localhost:8000")
+    server_url = os.getenv("SERVER_PUBLIC_URL", "http://localhost:5000")
     
     # Strip protocol to get hostname for WSS URL
     ws_host = server_url.replace('https://', '').replace('http://', '')
@@ -371,7 +371,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "app.main:app",
         host="0.0.0.0",
-        port=8000,
+        port=5000,
         reload=True,
         log_level="info"
     )

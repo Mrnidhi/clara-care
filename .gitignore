@@ -17,6 +17,8 @@ build/
 venv/
 .venv/
 env/
+.pythonlibs/
+.uv/
 
 # IDE
 .cursor/
